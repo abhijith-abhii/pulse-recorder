@@ -1,0 +1,29 @@
+[
+  {
+    "duration_seconds": 5.000026083,
+    "iterations": 2236570000,
+    "checksum": 6709709997000.0,
+    "repeat": 1,
+    "environment": "macOS-26.2-arm64-arm-64bit",
+    "kind": "host benchmark",
+    "unit": "state updates"
+  },
+  {
+    "duration_seconds": 5.000019417,
+    "iterations": 2260520000,
+    "checksum": 6781559997000.0,
+    "repeat": 2,
+    "environment": "macOS-26.2-arm64-arm-64bit",
+    "kind": "host benchmark",
+    "unit": "state updates"
+  },
+  {
+    "duration_seconds": 5.000022291,
+    "iterations": 2293890000,
+    "checksum": 6881669997000.0,
+    "repeat": 3,
+    "environment": "macOS-26.2-arm64-arm-64bit",
+    "kind": "host benchmark",
+    "unit": "state updates"
+  }
+]

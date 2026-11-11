@@ -1,0 +1,1 @@
+PASS 90130 assertions: debounce, rollover, long idle, parser, configuration

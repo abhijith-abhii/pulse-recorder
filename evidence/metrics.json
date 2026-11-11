@@ -1,0 +1,72 @@
+[
+  {
+    "id": "M06",
+    "metric": "Speed normalization error",
+    "definition": "Mean absolute RPM error",
+    "measurement_method": "Fixed 100 ms vs measured elapsed interval on same counts",
+    "environment": "macOS-26.2-arm64-arm-64bit; C++17 -O2; portable application core",
+    "workload": "3000 RPM; 2 PPR; repeated 80/100/120/90/110 ms schedule",
+    "sample_count_or_duration": "150 running intervals",
+    "baseline": 360.0,
+    "final_result": 0.0,
+    "units": "RPM",
+    "limitations": "Ideal phase-aligned integer pulse counts; real quantization remains",
+    "kind": "deterministic simulation"
+  },
+  {
+    "id": "M07",
+    "metric": "Stall delay",
+    "definition": "First stalled report minus final pulse timestamp",
+    "measurement_method": "Read timestamp difference from stopped trace",
+    "environment": "macOS-26.2-arm64-arm-64bit; C++17 -O2; portable application core",
+    "workload": "Pulse train ends after step 149",
+    "sample_count_or_duration": "50 stopped intervals",
+    "baseline": null,
+    "final_result": 2.0,
+    "units": "s",
+    "limitations": "No baseline stall algorithm; simulation time only; target <=2.1 s",
+    "kind": "deterministic simulation"
+  },
+  {
+    "id": "M08",
+    "metric": "Firmware flash footprint",
+    "definition": "PlatformIO linked image usage",
+    "measurement_method": "Parse target linker size report",
+    "environment": "ESP32-WROOM; Xtensa GCC 8.4.0; Arduino 2.0.17; PlatformIO 6.9.0",
+    "workload": "Physical-input ESP32 firmware",
+    "sample_count_or_duration": "1 target build",
+    "baseline": null,
+    "final_result": 290001,
+    "units": "bytes",
+    "limitations": "No baseline firmware image; static RAM excludes runtime heap, queues and task stacks",
+    "kind": "cross-compilation"
+  },
+  {
+    "id": "M09",
+    "metric": "Firmware static RAM",
+    "definition": "PlatformIO linked image usage",
+    "measurement_method": "Parse target linker size report",
+    "environment": "ESP32-WROOM; Xtensa GCC 8.4.0; Arduino 2.0.17; PlatformIO 6.9.0",
+    "workload": "Physical-input ESP32 firmware",
+    "sample_count_or_duration": "1 target build",
+    "baseline": null,
+    "final_result": 22384,
+    "units": "bytes",
+    "limitations": "No baseline firmware image; static RAM excludes runtime heap, queues and task stacks",
+    "kind": "cross-compilation"
+  },
+  {
+    "id": "M10",
+    "metric": "Host core throughput",
+    "definition": "Completed workload units per measured wall second",
+    "measurement_method": "steady_clock around compiled C++ core; observable checksum",
+    "environment": "macOS-26.2-arm64-arm-64bit; C++17 -O2; portable application core",
+    "workload": "elapsed-time recorder updates",
+    "sample_count_or_duration": "3 repetitions, durations 5.000026s,5.000019s,5.000022s",
+    "baseline": null,
+    "final_result": 452102244.3061445,
+    "units": "units/s",
+    "limitations": "Desktop benchmark only; no baseline speedup claim; min=447311666.55396026 max=458775954.68503886",
+    "kind": "host benchmark"
+  }
+]

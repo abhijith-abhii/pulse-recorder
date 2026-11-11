@@ -1,0 +1,7 @@
+Requirement,Test,Result,Environment
+P1,500 us debounce boundary and wrapped timestamps,PASS host model,Host / deterministic simulation
+P2,"Counter rollover, elapsed rollover, zero interval, no-pulse startup",PASS host,Host / deterministic simulation
+P2,"90,000 reports covering two timer wraps while stopped",PASS host regression,Host / deterministic simulation
+P3,"Invalid numbers, oversized commands, config corruption and reload",PASS host,Host / deterministic simulation
+P2,Deterministic +/-20 percent interval jitter and stop trace,PASS simulation,Host / deterministic simulation
+P1/P4/P5,"Real pulse capture, ADC linearity, ISR latency, watchdog, NVS power cut",PENDING hardware,Physical board

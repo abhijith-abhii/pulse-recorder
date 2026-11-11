@@ -1,0 +1,2 @@
+EXPECTED LEGACY FAILURE: FAIL line 44: out.stalled
+Current implementation passes the same long-idle regression in tools/test.sh.

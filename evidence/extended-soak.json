@@ -1,0 +1,8 @@
+{
+  "duration_seconds": 60.000048459,
+  "iterations": 27442510000,
+  "checksum": 82327529997000.0,
+  "environment": "macOS-26.2-arm64-arm-64bit",
+  "kind": "host extended loop; not hardware endurance",
+  "duration_target_seconds": 60.0
+}
