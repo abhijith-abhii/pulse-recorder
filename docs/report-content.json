@@ -1,0 +1,221 @@
+{
+  "title": "Equipment pulse recorder",
+  "subtitle": "Speed and stall monitoring with bounded interrupt work",
+  "problem": "A lab operator needs speed, running-time estimates and a clear stalled indication from a low-voltage fan or test fixture. This recorder counts digital pulses, reports speed at 100 ms intervals and lights an LED after two seconds without a pulse. It is a monitor, not a machine safety controller.",
+  "summary": "A rising edge interrupts the processor briefly. The interrupt accepts an edge only if it is far enough from the previous accepted edge, then updates a count and timestamp. Every 100 ms the task snapshots that shared state. Speed is the count difference divided by actual elapsed time and pulses per revolution. A saturating idle timer prevents a stopped machine from appearing active when the microsecond clock wraps.",
+  "requirements": [
+    [
+      "P1",
+      "GPIO27; <=1 kHz; reject edges <500 us; short ISR",
+      "Debounce model passes; real pulse fidelity pending"
+    ],
+    [
+      "P2",
+      "100 ms reports; 2 s stall; PPR 1..32",
+      "Counter/time wrap and stall simulation pass"
+    ],
+    [
+      "P3",
+      "Bounded PPR command; version/CRC persistence",
+      "Parser and corruption tests pass"
+    ],
+    [
+      "P4",
+      "ADC1 GPIO34 raw samples; LED GPIO25",
+      "Compiled adapter; electrical test pending"
+    ],
+    [
+      "P5",
+      "p99 report jitter <5 ms; 5 s watchdog",
+      "Target measurements pending"
+    ]
+  ],
+  "wiring": [
+    [
+      "GPIO27",
+      "3.3 V pulse source through 1 kohm",
+      "Common ground; never 5/12/24 V directly"
+    ],
+    [
+      "GPIO25",
+      "1 kohm resistor then LED anode",
+      "LED cathode to GND"
+    ],
+    [
+      "3V3 and GND",
+      "10 kohm potentiometer outer terminals",
+      "Low-voltage ADC stimulus"
+    ],
+    [
+      "GPIO34",
+      "Potentiometer wiper",
+      "ADC1 input; raw counts only"
+    ],
+    [
+      "GND",
+      "Pulse source ground",
+      "Required common reference"
+    ],
+    [
+      "USB",
+      "Host serial monitor",
+      "115200 baud; PPR commands"
+    ]
+  ],
+  "bom": [
+    [
+      "ESP32 DevKitC WROOM 4 MB",
+      "1",
+      "USD 10-18 estimate"
+    ],
+    [
+      "10 kohm pot, LED, 1 kohm resistors, wires",
+      "1 set",
+      "USD 5-10 estimate"
+    ],
+    [
+      "Second ESP32 or function generator",
+      "1",
+      "Borrow or USD 10-18 board estimate"
+    ]
+  ],
+  "arch": [
+    "3.3 V pulse source",
+    "Short GPIO ISR",
+    "Atomic snapshot",
+    "100 ms task",
+    "Speed and stall state",
+    "LED plus CSV output"
+  ],
+  "decisions": [
+    "The ISR uses the ESP timer timestamp and a critical section around its counter/timestamps. Its debounce timestamp is 64-bit to avoid rejecting a first pulse after a very long idle because of 32-bit aliasing. The reporting task takes the same lock only while copying fields; formatting and ADC reads happen outside it.",
+    "Speed uses modular count difference and actual elapsed microseconds. The calculation assumes snapshots occur more frequently than one 32-bit timer wrap, which is satisfied by the 100 ms target. The 1 kHz limit also prevents ambiguity from a full count wrap between reports.",
+    "Idle age accumulates between snapshots and saturates at two seconds. A changed count resets age from the latest edge. Once stalled, the output remains stalled until a new pulse is observed, even through repeated microsecond timer wraps.",
+    "PPR changes are parsed from a 32-byte bounded line, constrained to 1..32, CRC-sealed and committed to NVS before replacing the live value. Writes are rate-limited to once per second. A PPR change applies at the next report and may affect that boundary interval; perform calibration while stopped.",
+    "Runtime is accumulated for reporting intervals whose latest pulse is within the stall timeout. It includes the timeout tail, and is not exact shaft-on time. ADC1 avoids the ADC2/radio restriction but is still uncalibrated; output is raw ADC counts, never fabricated volts."
+  ],
+  "tests": [
+    [
+      "P1",
+      "500 us debounce boundary and wrapped timestamps",
+      "PASS host model"
+    ],
+    [
+      "P2",
+      "Counter rollover, elapsed rollover, zero interval, no-pulse startup",
+      "PASS host"
+    ],
+    [
+      "P2",
+      "90,000 reports covering two timer wraps while stopped",
+      "PASS host regression"
+    ],
+    [
+      "P3",
+      "Invalid numbers, oversized commands, config corruption and reload",
+      "PASS host"
+    ],
+    [
+      "P2",
+      "Deterministic +/-20 percent interval jitter and stop trace",
+      "PASS simulation"
+    ],
+    [
+      "P1/P4/P5",
+      "Real pulse capture, ADC linearity, ISR latency, watchdog, NVS power cut",
+      "PENDING hardware"
+    ]
+  ],
+  "failures": "The first long-idle regression failed: direct subtraction from an old edge made the stopped device appear recently active after a timer wrap. A saturating idle-age accumulator fixed it; 90,000 report intervals now cover more than two wraps. Review also changed the ISR debounce timestamp to 64-bit. The model and physical adapter timing remain separately identified.",
+  "limitations": "Speed is quantized by pulses per reporting window, especially at low RPM. The synthetic jitter test uses pulse counts that divide cleanly into its intervals; real edge phase adds quantization. Debounce can reject legitimate pulses closer than 500 microseconds, so the supported rate is deliberately limited to 1 kHz. Runtime includes a timeout tail. The LED is not a safety output. ADC voltage and sample timing require calibration and measurement.",
+  "experiments": [
+    "Drive GPIO27 with 10, 100 and 1000 Hz 3.3 V square waves for 60 s each. Compare accepted counts with a generator or logic analyzer. Add narrow bounce pulses <500 microseconds and confirm rejection without suppressing valid edges.",
+    "Capture a diagnostic GPIO toggled at each report along with the input pulses for 10 minutes. Compute actual interval p50/p95/p99 and missed periods; target p99 jitter <5 ms. Stop pulses at randomized phases and verify LED latency <=2.1 s.",
+    "Change PPR while stopped, reboot and verify persistence; cut power during configuration writes. Compare ADC raw counts at measured 0.5, 1.0, 2.0 and 3.0 V inputs. Disable watchdog feeding in a temporary test build and verify reset."
+  ],
+  "walkthrough": [
+    [
+      "src/main.cpp: pulse",
+      "Read the timestamp outside the lock, then update only count/time state inside it. Explain why the output task must take the same lock."
+    ],
+    [
+      "include/recorder.hpp: Recorder.update",
+      "Walk through dc, dt, RPM and idle-age saturation. Explain the less-than-one-wrap assumption."
+    ],
+    [
+      "include/recorder.hpp: Config",
+      "Show magic, version, PPR range and checksum validation. A stored integer alone would lack these checks."
+    ],
+    [
+      "src/main.cpp: loop",
+      "Follow bounded command parsing, delay-until scheduling, snapshot, calculations, LED and CSV."
+    ],
+    [
+      "tests/test.cpp: longidle",
+      "Describe the original regression and why 90,000 synthetic 100 ms intervals test two timer wraps in seconds of host time."
+    ],
+    [
+      "tools/simulate.cpp",
+      "Compare fixed 100 ms division against measured intervals on the identical pulse trace."
+    ]
+  ],
+  "questions": [
+    [
+      "Why use actual elapsed time?",
+      "A task may run early or late. Dividing counts by an assumed 100 ms produces a speed error proportional to interval error."
+    ],
+    [
+      "Why does unsigned subtraction handle rollover?",
+      "Arithmetic is modulo 2^32. If the actual elapsed interval is less than one wrap, now minus then gives that interval even when the counter crossed zero."
+    ],
+    [
+      "Why was subtraction alone insufficient for stall detection?",
+      "The last edge can be older than a complete wrap. Its modular age then looks small again. Saturating accumulated idle age avoids that ambiguity."
+    ],
+    [
+      "Does volatile make shared data safe?",
+      "No. It prevents certain compiler assumptions but does not make a multi-field snapshot atomic. The ISR and task use the same critical-section lock."
+    ],
+    [
+      "What limits the maximum input frequency?",
+      "Debounce rejects edges closer than 500 microseconds, and ISR service also consumes time. The design targets 1 kHz and requires physical verification."
+    ],
+    [
+      "What does PPR mean?",
+      "Pulses per revolution. RPM equals pulses per second times 60 divided by PPR. A wrong PPR produces a proportional calibration error."
+    ],
+    [
+      "Why does low-speed RPM jump?",
+      "A short window may contain zero or one pulse. Period measurement or adaptive windows can improve low-speed resolution at the cost of response behavior."
+    ],
+    [
+      "Why is runtime approximate?",
+      "The state remains active until the two-second stall timeout and updates in reporting intervals. The metric includes that tail and boundary quantization."
+    ],
+    [
+      "What is the ADC measuring?",
+      "Only raw counts from a 0-3.3 V test input. Reference variation and nonlinearity mean a voltage claim needs calibration."
+    ],
+    [
+      "How would you improve the hardware?",
+      "Use the ESP32 pulse-counter peripheral for higher rates, an appropriate input protection/level interface, and physical timing tests. Compare PCNT and ISR results before claiming improvement."
+    ]
+  ],
+  "mods": [
+    "Implement reciprocal-period RPM for low rates and test transition behavior.",
+    "Add a PCNT hardware adapter and compare missed pulses and CPU cost on a board.",
+    "Separate exact pulse-present runtime from the current stall-qualified runtime and test both semantics."
+  ],
+  "demo": [
+    "Run sh tools/test.sh; point out the long-idle regression and malformed-command checks.",
+    "Run sh tools/simulate.sh and inspect the jitter comparison chart.",
+    "Show why 80 ms and 120 ms intervals fool the baseline but not elapsed-time normalization.",
+    "Follow the stopped trace to STALLED, then state that real jitter and pulse-loss claims await a generator."
+  ],
+  "resume": [
+    "Created an AI-assisted C++ equipment recorder with bounded pulse interrupts, configurable pulses per revolution, stall indication and persistent configuration; cross-compiled for ESP32.",
+    "Fixed a timer-rollover stall defect and validated stopped-state persistence across 90,000 synthetic reporting intervals.",
+    "Eliminated fixed-window normalization error on a deterministic jitter trace by calculating RPM from actual elapsed time; physical timing remains unmeasured."
+  ],
+  "id": "pulse-recorder"
+}

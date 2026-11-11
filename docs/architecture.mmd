@@ -1,0 +1,12 @@
+flowchart TD
+  n0["3.3 V pulse source"]
+  n1["Short GPIO ISR"]
+  n2["Atomic snapshot"]
+  n3["100 ms task"]
+  n4["Speed and stall state"]
+  n5["LED plus CSV output"]
+  n0 --> n1
+  n1 --> n2
+  n2 --> n3
+  n3 --> n4
+  n4 --> n5
